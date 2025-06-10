@@ -1,2 +1,8 @@
-
-.DS_Store
+__pycache__/
+*.pyc
+*.pth
+modules/pointops/build/
+modules/pointops/dist/
+modules/pointops/pointops_cuda.egg-info/
+work_dirs/
+dataset/
