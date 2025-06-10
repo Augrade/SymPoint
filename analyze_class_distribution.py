@@ -257,14 +257,67 @@ def analyze_remapped_distribution(semantic_counts, instance_counts, thing_instan
                 
                 print(f"  {sem_id:>3}: {name:<20} {count:>10,} ({percentage:>5.2f}%) - {instance_str}")
 
+def test_remapping():
+    """Test the remapping functionality from the SVG dataset."""
+    print(f"\n{'='*80}")
+    print("TESTING REMAPPED CLASS FUNCTIONALITY")
+    print(f"{'='*80}")
+    
+    # Import and test the remapping
+    import sys
+    sys.path.append('/Users/kai/Documents/SymPoint')
+    from svgnet.data.svg import SVGDataset
+    import logging
+    
+    # Create a mock logger
+    logger = logging.getLogger()
+    
+    try:
+        # Test with remapped classes
+        dataset = SVGDataset(
+            data_root="dataset/train/jsons",
+            split="train",
+            data_norm="mean",
+            aug=None,
+            repeat=1,
+            logger=logger,
+            exclude_railing=False,
+            use_remapped_classes=True
+        )
+        
+        print("✓ Successfully created SVGDataset with remapped classes")
+        print(f"  - Semantic remapping: {dataset.semantic_remapping}")
+        
+        # Load one sample to test
+        if len(dataset.data_list) > 0:
+            coord, feat, label, lengths = dataset.load(dataset.data_list[0], 0)
+            unique_semantic_ids = np.unique(label[:, 0])
+            print(f"  - Sample file semantic IDs after remapping: {sorted(unique_semantic_ids)}")
+            print(f"  - Expected range: 0-6 (7 remapped classes)")
+            
+            if max(unique_semantic_ids) <= 6:
+                print("✓ Remapping working correctly!")
+            else:
+                print("✗ Remapping may have issues - found IDs > 6")
+        
+    except Exception as e:
+        print(f"✗ Error testing remapped classes: {e}")
+
 if __name__ == "__main__":
     import argparse
     
     parser = argparse.ArgumentParser(description="Analyze class distribution in SVG dataset")
     parser.add_argument("--data_root", type=str, default="dataset/train",
                         help="Path to dataset directory (default: dataset/train)")
+    parser.add_argument("--test_remapping", action="store_true",
+                        help="Test the remapping functionality")
     
     args = parser.parse_args()
+    
+    # Test remapping if requested
+    if args.test_remapping:
+        test_remapping()
+        return
     
     # Also check the alternate path mentioned by user
     if not os.path.exists(args.data_root):

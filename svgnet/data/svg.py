@@ -59,23 +59,64 @@ class SVGDataset(Dataset):
 
     CLASSES = tuple([x["name"] for x in SVG_CATEGORIES])
 
-    def __init__(self, data_root, split,data_norm,aug, repeat=1, logger=None):
+    def __init__(self, data_root, split,data_norm,aug, repeat=1, logger=None, exclude_railing=False, use_remapped_classes=False):
         
         self.split = split
         self.data_norm = data_norm
         self.aug = aug
         self.repeat = repeat
+        self.exclude_railing = exclude_railing
+        self.use_remapped_classes = use_remapped_classes
+        
+        # Define remapping for semantic classes
+        if self.use_remapped_classes:
+            self.semantic_remapping = self._create_semantic_remapping()
         self.data_list = glob(osp.join(data_root,"*.json"))
         logger.info(f"Load {split} dataset: {len(self.data_list)} svg")
         self.data_idx = np.arange(len(self.data_list))
         
         self.instance_queues = []
 
+    def _create_semantic_remapping(self):
+        """Create mapping from original semantic IDs to remapped class IDs."""
+        # Remapped categories: 0=doors, 1=windows, 2=furniture, 3=stairs, 4=equipment, 5=walls, 6=other/background
+        remapping = {}
+        
+        # Doors: IDs 1-6 -> 0
+        for i in range(1, 7):
+            remapping[i] = 0
+        
+        # Windows: IDs 7-10 -> 1
+        for i in range(7, 11):
+            remapping[i] = 1
+        
+        # Furniture: IDs 11-27 -> 2
+        for i in range(11, 28):
+            remapping[i] = 2
+        
+        # Stairs: ID 28 -> 3
+        remapping[28] = 3
+        
+        # Equipment: IDs 29-30 -> 4
+        for i in range(29, 31):
+            remapping[i] = 4
+        
+        # Walls: IDs 33-34 -> 5
+        remapping[33] = 5
+        remapping[34] = 5
+        
+        # Other/Background: IDs 0, 31, 32, 35 -> 6
+        remapping[0] = 6
+        remapping[31] = 6
+        remapping[32] = 6
+        remapping[35] = 6
+        
+        return remapping
+
     def __len__(self):
         return len(self.data_list)*self.repeat
     
-    @staticmethod
-    def load(json_file,idx,min_points=2048):
+    def load(self, json_file,idx,min_points=2048):
         data = json.load(open(json_file))
         args = np.array(data["args"]).reshape(-1,8)/ 140
         num = args.shape[0]
@@ -117,6 +158,22 @@ class SVGDataset(Dataset):
         
         instanceIds[:num] = ins
         instanceIds = instanceIds.astype(np.int64)
+        
+        # Filter out railing (class 35) if exclude_railing is enabled
+        if getattr(self, 'exclude_railing', False):
+            valid_mask = semanticIds != 35
+            coord = coord[valid_mask]
+            feat = feat[valid_mask]
+            semanticIds = semanticIds[valid_mask]
+            instanceIds = instanceIds[valid_mask]
+        
+        # Apply remapping if enabled
+        if getattr(self, 'use_remapped_classes', False) and hasattr(self, 'semantic_remapping'):
+            # Remap semantic IDs
+            remapped_semanticIds = np.zeros_like(semanticIds)
+            for orig_id, new_id in self.semantic_remapping.items():
+                remapped_semanticIds[semanticIds == orig_id] = new_id
+            semanticIds = remapped_semanticIds
         label = np.concatenate([semanticIds[:,None],instanceIds[:,None]],axis=1)
         return coord, feat, label,lengths
     
@@ -124,7 +181,7 @@ class SVGDataset(Dataset):
         
         data_idx = self.data_idx[idx % len(self.data_idx)]
         json_file = self.data_list[data_idx]
-        coord, feat, label,lengths = SVGDataset.load(json_file,idx)
+        coord, feat, label,lengths = self.load(json_file,idx)
         
         if self.split=="train":
             return self.transform_train(coord, feat, label)
