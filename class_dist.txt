@@ -1,0 +1,406 @@
+Found 6965 JSON files in dataset/train/jsons
+
+================================================================================
+DATASET ANALYSIS: dataset/train/jsons
+================================================================================
+Total files: 6965
+Total paths: 7,764,513
+
+================================================================================
+SEMANTIC CLASS DISTRIBUTION
+================================================================================
+  ID Class Name           Type        Count Percentage  Unique Instances
+---- -------------------- ------ ---------- ---------- -----------------
+   0 unknown_0            ?         113,801      1.47%       N/A (stuff)
+   1 single door          thing     109,555      1.41%               123
+   2 double door          thing      47,168      0.61%               101
+   3 sliding door         thing       2,221      0.03%                29
+   4 folding door         thing         858      0.01%                 5
+   5 revolving door       thing          96      0.00%                 7
+   6 rolling door         thing     112,796      1.45%               185
+   7 window               thing       3,262      0.04%                69
+   8 bay window           thing      24,954      0.32%                64
+   9 blind window         thing       6,777      0.09%               111
+  10 opening symbol       thing      28,398      0.37%                89
+  11 sofa                 thing     423,026      5.45%                95
+  12 bed                  thing     141,318      1.82%               193
+  13 chair                thing      35,114      0.45%               192
+  14 table                thing      18,940      0.24%                96
+  15 TV cabinet           thing     130,796      1.68%                89
+  16 Wardrobe             thing      56,750      0.73%               171
+  17 cabinet              thing      56,590      0.73%                92
+  18 shelf                thing     205,072      2.64%               122
+  19 showering room       thing      18,757      0.24%                95
+  20 bathtub              thing      19,135      0.25%               109
+  21 toilet               thing      51,865      0.67%                96
+  22 washing basin        thing      27,906      0.36%                86
+  23 kitchen              thing      38,231      0.49%                94
+  24 refrigerator         thing      77,320      1.00%                89
+  25 airconditioner       thing      59,825      0.77%                83
+  26 washing machine      thing     165,367      2.13%               119
+  27 other furniture      thing     137,225      1.77%                94
+  28 stairs               thing      59,781      0.77%                81
+  29 elevator             thing      15,841      0.20%                29
+  30 escalator            thing     406,491      5.24%                 0
+  31 row chairs           stuff     148,711      1.92%       N/A (stuff)
+  32 parking spot         stuff     884,796     11.40%       N/A (stuff)
+  33 wall                 stuff      74,205      0.96%       N/A (stuff)
+  34 curtain wall         stuff      32,663      0.42%       N/A (stuff)
+  35 railing              stuff   4,028,902     51.89%       N/A (stuff)
+
+================================================================================
+INSTANCE ID DISTRIBUTION PER SEMANTIC CLASS
+================================================================================
+
+0: unknown_0
+  Instance 1: 6,110 paths
+  Instance 2: 5,941 paths
+  Instance 3: 5,641 paths
+  Instance 4: 5,220 paths
+  Instance 5: 5,495 paths
+  Instance 6: 4,548 paths
+  Instance 7: 4,070 paths
+  Instance 8: 4,001 paths
+  Instance 9: 3,681 paths
+  Instance 10: 3,474 paths
+  Instance 11: 3,242 paths
+  Instance 12: 3,104 paths
+  Instance 13: 2,909 paths
+  Instance 14: 2,797 paths
+  Instance 15: 2,635 paths
+  Instance 16: 2,571 paths
+  Instance 17: 2,467 paths
+  Instance 18: 2,338 paths
+  Instance 19: 2,228 paths
+  Instance 20: 2,013 paths
+  Instance 21: 2,030 paths
+  Instance 22: 1,847 paths
+  Instance 23: 1,627 paths
+  Instance 24: 1,607 paths
+  Instance 25: 1,574 paths
+  Instance 26: 1,489 paths
+  Instance 27: 1,461 paths
+  Instance 28: 1,333 paths
+  Instance 29: 1,374 paths
+  Instance 30: 1,394 paths
+  Instance 31: 1,308 paths
+  Instance 32: 1,226 paths
+  Instance 33: 1,003 paths
+  Instance 34: 1,059 paths
+  Instance 35: 1,091 paths
+  Instance 36: 918 paths
+  Instance 37: 818 paths
+  Instance 38: 690 paths
+  Instance 39: 678 paths
+  Instance 40: 746 paths
+  Instance 41: 789 paths
+  Instance 42: 843 paths
+  Instance 43: 846 paths
+  Instance 44: 790 paths
+  Instance 45: 665 paths
+  Instance 46: 649 paths
+  Instance 47: 568 paths
+  Instance 48: 525 paths
+  Instance 49: 456 paths
+  Instance 50: 436 paths
+  Instance 51: 479 paths
+  Instance 52: 397 paths
+  Instance 53: 399 paths
+  Instance 54: 305 paths
+  Instance 55: 275 paths
+  Instance 56: 273 paths
+  Instance 57: 256 paths
+  Instance 58: 220 paths
+  Instance 59: 220 paths
+  Instance 60: 168 paths
+  Instance 61: 195 paths
+  Instance 62: 170 paths
+  Instance 63: 196 paths
+  Instance 64: 175 paths
+  Instance 65: 165 paths
+  Instance 66: 157 paths
+  Instance 67: 130 paths
+  Instance 68: 128 paths
+  Instance 69: 253 paths
+  Instance 70: 164 paths
+  Instance 71: 210 paths
+  Instance 72: 145 paths
+  Instance 73: 160 paths
+  Instance 74: 166 paths
+  Instance 75: 174 paths
+  Instance 76: 153 paths
+  Instance 77: 127 paths
+  Instance 78: 121 paths
+  Instance 79: 109 paths
+  Instance 80: 86 paths
+  Instance 81: 77 paths
+  Instance 82: 92 paths
+  Instance 83: 88 paths
+  Instance 84: 44 paths
+  Instance 85: 75 paths
+  Instance 86: 64 paths
+  Instance 87: 30 paths
+  Instance 88: 57 paths
+  Instance 89: 21 paths
+  Instance 90: 24 paths
+  Instance 91: 14 paths
+  Instance 92: 31 paths
+  Instance 93: 23 paths
+  Instance 94: 22 paths
+  Instance 95: 36 paths
+  Instance 96: 32 paths
+  Instance 97: 46 paths
+  Instance 98: 40 paths
+  Instance 99: 25 paths
+  Instance 100: 13 paths
+  Instance 101: 19 paths
+  Instance 102: 21 paths
+  Instance 103: 16 paths
+  Instance 104: 5 paths
+  Instance 105: 10 paths
+  Instance 106: 15 paths
+  Instance 107: 17 paths
+  Instance 108: 6 paths
+  Instance 109: 14 paths
+  Instance 110: 5 paths
+  Instance 113: 13 paths
+  Instance 114: 8 paths
+  Instance 115: 5 paths
+  Instance 117: 14 paths
+  Instance 118: 10 paths
+  Instance 119: 5 paths
+  Instance 120: 6 paths
+  Instance 121: 11 paths
+  Instance 122: 6 paths
+  Instance 123: 6 paths
+  Instance 124: 16 paths
+  Instance 125: 17 paths
+  Instance 126: 14 paths
+  Instance 127: 12 paths
+  Instance 128: 6 paths
+  Instance 129: 6 paths
+  Instance 130: 6 paths
+  Instance 131: 12 paths
+  Instance 132: 11 paths
+  Instance 133: 11 paths
+  Instance 134: 6 paths
+  Instance 135: 5 paths
+  Instance 137: 3 paths
+  Instance 138: 8 paths
+  Instance 139: 6 paths
+  Instance 140: 6 paths
+  Instance 141: 6 paths
+  Instance 146: 5 paths
+  Instance 147: 5 paths
+  Instance 148: 4 paths
+  Instance 185: 5 paths
+  Instance 186: 5 paths
+  Instance 187: 5 paths
+  Instance 188: 5 paths
+  Instance 189: 10 paths
+  Instance 190: 10 paths
+  Instance 191: 9 paths
+  Instance 206: 5 paths
+  Instance 209: 5 paths
+  Instance 210: 5 paths
+  Instance 211: 5 paths
+
+1: single door
+  Unique instances: 123
+  Paths per instance: min=4, max=14913, avg=890.7, median=67.0
+
+2: double door
+  Unique instances: 101
+  Paths per instance: min=9, max=2251, avg=467.0, median=215.0
+
+3: sliding door
+  Unique instances: 29
+  Paths per instance: min=14, max=352, avg=76.6, median=48.0
+
+4: folding door
+  Unique instances: 5
+  Paths per instance: min=4, max=471, avg=171.6, median=8.0
+
+5: revolving door
+  Unique instances: 7
+  Paths per instance: min=2, max=70, avg=13.7, median=3.0
+
+6: rolling door
+  Unique instances: 185
+  Paths per instance: min=1, max=5874, avg=609.7, median=47.0
+
+7: window
+  Unique instances: 69
+  Paths per instance: min=1, max=146, avg=47.3, median=37.0
+
+8: bay window
+  Unique instances: 64
+  Paths per instance: min=10, max=2051, avg=389.9, median=191.5
+
+9: blind window
+  Unique instances: 111
+  Paths per instance: min=2, max=355, avg=61.1, median=49.0
+
+10: opening symbol
+  Unique instances: 89
+  Paths per instance: min=4, max=921, avg=319.1, median=258.0
+
+11: sofa
+  Unique instances: 95
+  Paths per instance: min=15, max=11790, avg=4452.9, median=2362.0
+
+12: bed
+  Unique instances: 193
+  Paths per instance: min=3, max=3743, avg=732.2, median=89.0
+
+13: chair
+  Unique instances: 192
+  Paths per instance: min=3, max=1113, avg=182.9, median=25.5
+
+14: table
+  Unique instances: 96
+  Paths per instance: min=9, max=559, avg=197.3, median=192.5
+
+15: TV cabinet
+  Unique instances: 89
+  Paths per instance: min=27, max=3753, avg=1469.6, median=1453.0
+
+16: Wardrobe
+  Unique instances: 171
+  Paths per instance: min=3, max=1375, avg=331.9, median=71.0
+
+17: cabinet
+  Unique instances: 92
+  Paths per instance: min=11, max=2611, avg=615.1, median=294.5
+
+18: shelf
+  Unique instances: 122
+  Paths per instance: min=6, max=7929, avg=1680.9, median=604.0
+
+19: showering room
+  Unique instances: 95
+  Paths per instance: min=8, max=795, avg=197.4, median=168.0
+
+20: bathtub
+  Unique instances: 109
+  Paths per instance: min=6, max=2212, avg=175.6, median=65.0
+
+21: toilet
+  Unique instances: 96
+  Paths per instance: min=11, max=1838, avg=540.3, median=401.5
+
+22: washing basin
+  Unique instances: 86
+  Paths per instance: min=13, max=1997, avg=324.5, median=171.0
+
+23: kitchen
+  Unique instances: 94
+  Paths per instance: min=22, max=1922, avg=406.7, median=219.0
+
+24: refrigerator
+  Unique instances: 89
+  Paths per instance: min=10, max=3381, avg=868.8, median=388.0
+
+25: airconditioner
+  Unique instances: 83
+  Paths per instance: min=10, max=3261, avg=720.8, median=190.0
+
+26: washing machine
+  Unique instances: 119
+  Paths per instance: min=2, max=8069, avg=1389.6, median=443.0
+
+27: other furniture
+  Unique instances: 94
+  Paths per instance: min=8, max=28516, avg=1459.8, median=280.0
+
+28: stairs
+  Unique instances: 81
+  Paths per instance: min=10, max=6275, avg=738.0, median=168.0
+
+29: elevator
+  Unique instances: 29
+  Paths per instance: min=10, max=4654, avg=546.2, median=86.0
+
+30: escalator
+
+31: row chairs
+  Instance -1: 148,711 paths
+
+32: parking spot
+  Instance -1: 884,796 paths
+
+33: wall
+  Instance -1: 74,205 paths
+
+34: curtain wall
+  Instance -1: 32,663 paths
+
+35: railing
+  Instance -1: 4,028,902 paths
+
+================================================================================
+REMAPPED CLASS DISTRIBUTION
+================================================================================
+Category                    Count   Percentage Semantic IDs                    Unique Instances
+-------------------- ------------ ------------ ------------------------------ -----------------
+doors                     272,694        3.51% [1, 2, 3, 4, 5, 6]                           188
+windows                    63,391        0.82% [7, 8, 9, 10]                                112
+furniture               1,663,237       21.42% [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]               204
+stairs                     59,781        0.77% [28]                                          81
+equipment                 422,332        5.44% [29, 30]                                      29
+walls                     106,868        1.38% [33, 34]                             N/A (stuff)
+other/background        5,176,210       66.66% [0, 31, 32, 35]                      N/A (stuff)
+
+================================================================================
+DETAILED REMAPPED BREAKDOWN
+================================================================================
+
+DOORS:
+    1: single door             109,555 ( 1.41%) - 123 instances
+    2: double door              47,168 ( 0.61%) - 101 instances
+    3: sliding door              2,221 ( 0.03%) - 29 instances
+    4: folding door                858 ( 0.01%) - 5 instances
+    5: revolving door               96 ( 0.00%) - 7 instances
+    6: rolling door            112,796 ( 1.45%) - 185 instances
+
+WINDOWS:
+    7: window                    3,262 ( 0.04%) - 69 instances
+    8: bay window               24,954 ( 0.32%) - 64 instances
+    9: blind window              6,777 ( 0.09%) - 111 instances
+   10: opening symbol           28,398 ( 0.37%) - 89 instances
+
+FURNITURE:
+   11: sofa                    423,026 ( 5.45%) - 95 instances
+   12: bed                     141,318 ( 1.82%) - 193 instances
+   13: chair                    35,114 ( 0.45%) - 192 instances
+   14: table                    18,940 ( 0.24%) - 96 instances
+   15: TV cabinet              130,796 ( 1.68%) - 89 instances
+   16: Wardrobe                 56,750 ( 0.73%) - 171 instances
+   17: cabinet                  56,590 ( 0.73%) - 92 instances
+   18: shelf                   205,072 ( 2.64%) - 122 instances
+   19: showering room           18,757 ( 0.24%) - 95 instances
+   20: bathtub                  19,135 ( 0.25%) - 109 instances
+   21: toilet                   51,865 ( 0.67%) - 96 instances
+   22: washing basin            27,906 ( 0.36%) - 86 instances
+   23: kitchen                  38,231 ( 0.49%) - 94 instances
+   24: refrigerator             77,320 ( 1.00%) - 89 instances
+   25: airconditioner           59,825 ( 0.77%) - 83 instances
+   26: washing machine         165,367 ( 2.13%) - 119 instances
+   27: other furniture         137,225 ( 1.77%) - 94 instances
+
+STAIRS:
+   28: stairs                   59,781 ( 0.77%) - 81 instances
+
+EQUIPMENT:
+   29: elevator                 15,841 ( 0.20%) - 29 instances
+   30: escalator               406,491 ( 5.24%) - stuff class
+
+WALLS:
+   33: wall                     74,205 ( 0.96%) - stuff class
+   34: curtain wall             32,663 ( 0.42%) - stuff class
+
+OTHER/BACKGROUND:
+    0: unknown_0               113,801 ( 1.47%) - 151 instances
+   31: row chairs              148,711 ( 1.92%) - stuff class
+   32: parking spot            884,796 (11.40%) - stuff class
+   35: railing               4,028,902 (51.89%) - stuff class
