@@ -317,7 +317,7 @@ if __name__ == "__main__":
     # Test remapping if requested
     if args.test_remapping:
         test_remapping()
-        return
+        exit()
     
     # Also check the alternate path mentioned by user
     if not os.path.exists(args.data_root):
