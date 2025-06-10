@@ -184,8 +184,8 @@ class SetCriterion(nn.Module):
         target_masks = target_masks[tgt_idx]
         
         losses = {
-            "loss_mask": sigmoid_ce_loss_jit(src_masks, target_masks, num_masks)*self.weight_dict["loss_mask"],
-            "loss_dice": dice_loss_jit(src_masks, target_masks, num_masks)*self.weight_dict["loss_dice"],
+            "loss_mask": sigmoid_ce_loss(src_masks, target_masks, num_masks)*self.weight_dict["loss_mask"],
+            "loss_dice": dice_loss(src_masks, target_masks, num_masks)*self.weight_dict["loss_dice"],
         }
         del src_masks
         del target_masks

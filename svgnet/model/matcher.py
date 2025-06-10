@@ -27,9 +27,9 @@ def batch_dice_loss(inputs: torch.Tensor, targets: torch.Tensor):
     return loss
 
 
-batch_dice_loss_jit = torch.jit.script(
-    batch_dice_loss
-)  # type: torch.jit.ScriptModule
+#batch_dice_loss_jit = torch.jit.script(
+#    batch_dice_loss
+#)  # type: torch.jit.ScriptModule
 
 
 def batch_sigmoid_ce_loss(inputs: torch.Tensor, targets: torch.Tensor):
@@ -58,9 +58,9 @@ def batch_sigmoid_ce_loss(inputs: torch.Tensor, targets: torch.Tensor):
     return loss / hw
 
 
-batch_sigmoid_ce_loss_jit = torch.jit.script(
-    batch_sigmoid_ce_loss
-)  # type: torch.jit.ScriptModule
+#batch_sigmoid_ce_loss_jit = torch.jit.script(
+#    batch_sigmoid_ce_loss
+#)  # type: torch.jit.ScriptModule
 
 
 class HungarianMatcher(nn.Module):
@@ -119,9 +119,9 @@ class HungarianMatcher(nn.Module):
                 out_mask = out_mask.float()
                 tgt_mask = tgt_mask.float().transpose(0,1)
                 # Compute the focal loss between masks
-                cost_mask = batch_sigmoid_ce_loss_jit(out_mask, tgt_mask)
+                cost_mask = batch_sigmoid_ce_loss(out_mask, tgt_mask)
                 # Compute the dice loss betwen masks
-                cost_dice = batch_dice_loss_jit(out_mask, tgt_mask)
+                cost_dice = batch_dice_loss(out_mask, tgt_mask)
                 iou = (1-cost_dice) / (1+cost_dice + 1e-8)
                 _out_prob = out_prob[:, tgt_ids] * iou
                 neg_cost_class = (1 - alpha) * (_out_prob ** gamma) * (-(1 - _out_prob + 1e-5).log())
