@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 export PYTHONPATH=./
-GPUS=1
+GPUS=8
 
 # For remapped classes training
 OMP_NUM_THREADS=$GPUS /home/kai/miniconda3/envs/spv1/bin/torchrun --nproc_per_node=$GPUS --master_port=$((RANDOM + 10000)) tools/train.py \
