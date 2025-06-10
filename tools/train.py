@@ -169,6 +169,8 @@ def main():
 
     if args.dist:
         rank = init_dist()
+    else:
+        rank = 0
     set_seed(args.seed + rank)    
     cfg.dist = args.dist
     

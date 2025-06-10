@@ -290,7 +290,7 @@ def test_remapping():
         
         # Load one sample to test
         if len(dataset.data_list) > 0:
-            coord, feat, label, lengths = dataset.load(dataset.data_list[0], 0)
+            _, _, label, _ = dataset.load(dataset.data_list[0], 0)
             unique_semantic_ids = np.unique(label[:, 0])
             print(f"  - Sample file semantic IDs after remapping: {sorted(unique_semantic_ids)}")
             print(f"  - Expected range: 0-6 (7 remapped classes)")
