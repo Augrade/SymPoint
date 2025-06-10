@@ -11,7 +11,30 @@ class PointWiseEval(object):
         self._b_conf_matrix = np.zeros(
             (self._num_classes + 1, self._num_classes + 1), dtype=np.int64
         )
-        self._class_names = [x["name"] for x in SVG_CATEGORIES[:-1]]
+        # Handle different number of classes - use generic names if needed
+        if num_classes == 7:
+            # Remapped class names
+            self._class_names = ["doors", "windows", "furniture", "stairs", "equipment", "walls", "other/background"]
+        elif num_classes == 35:
+            # Original class names excluding background (IDs 1-35, indices 0-34 in the list)
+            self._class_names = [SVG_CATEGORIES[i]["name"] for i in range(35)]
+        else:
+            # For any other number, be careful about the indexing
+            self._class_names = []
+            for i in range(num_classes):
+                if i < len(SVG_CATEGORIES):
+                    self._class_names.append(SVG_CATEGORIES[i]["name"])
+                else:
+                    self._class_names.append(f"Class_{i}")
+        
+        # Ensure we have exactly num_classes names
+        if len(self._class_names) != num_classes:
+            print(f"Warning: Class names mismatch: got {len(self._class_names)} names but expected {num_classes}")
+            # Pad or trim to match
+            if len(self._class_names) < num_classes:
+                self._class_names.extend([f"Class_{i}" for i in range(len(self._class_names), num_classes)])
+            else:
+                self._class_names = self._class_names[:num_classes]
         self.gpu_num = gpu_num
         
     def update(self, pred_sem, gt_sem):
@@ -57,7 +80,9 @@ class PointWiseEval(object):
         pacc = np.sum(tp) / (np.sum(pos_gt)+1e-8)
 
         miou, fiou, pACC = 100 * miou, 100 * fiou, 100 * pacc
-        for i, name in enumerate(self._class_names):
+        # Only print IoU for valid classes
+        for i in range(min(len(iou), len(self._class_names))):
+            name = self._class_names[i]
             logger.info('Class_{}  IoU: {:.3f}'.format(name,iou[i]*100))
         
         logger.info('mIoU / fwIoU / pACC : {:.3f} / {:.3f} / {:.3f}'.format(miou, fiou, pACC))
