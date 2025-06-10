@@ -163,6 +163,99 @@ def analyze_dataset(data_root):
             # For stuff classes, should all be -1
             for inst_id, count in sorted(inst_dist.items()):
                 print(f"  Instance {inst_id}: {count:,} paths")
+    
+    # Call remapped analysis
+    analyze_remapped_distribution(semantic_counts, instance_counts, thing_instances, total_paths)
+
+def get_remapped_category(sem_id):
+    """Get remapped category for a semantic ID."""
+    if 1 <= sem_id <= 6:
+        return "doors"
+    elif 7 <= sem_id <= 10:
+        return "windows"
+    elif 11 <= sem_id <= 27:
+        return "furniture"
+    elif sem_id == 28:
+        return "stairs"
+    elif 29 <= sem_id <= 30:
+        return "equipment"
+    elif sem_id in [33, 34]:  # wall, curtain wall
+        return "walls"
+    else:
+        return "other/background"
+
+def analyze_remapped_distribution(semantic_counts, instance_counts, thing_instances, total_paths):
+    """Analyze distribution with remapped categories."""
+    print(f"\n{'='*80}")
+    print("REMAPPED CLASS DISTRIBUTION")
+    print(f"{'='*80}")
+    
+    # Aggregate counts by remapped category
+    remapped_counts = defaultdict(int)
+    remapped_instances = defaultdict(set)
+    remapped_sem_ids = defaultdict(list)
+    
+    for sem_id, count in semantic_counts.items():
+        remapped_cat = get_remapped_category(sem_id)
+        remapped_counts[remapped_cat] += count
+        remapped_sem_ids[remapped_cat].append(sem_id)
+        
+        # Aggregate unique instances for thing classes
+        if sem_id in thing_instances:
+            remapped_instances[remapped_cat].update(thing_instances[sem_id])
+    
+    # Define order for display
+    category_order = ["doors", "windows", "furniture", "stairs", "equipment", "walls", "other/background"]
+    
+    print(f"{'Category':<20} {'Count':>12} {'Percentage':>12} {'Semantic IDs':<30} {'Unique Instances':>17}")
+    print(f"{'-'*20} {'-'*12} {'-'*12} {'-'*30} {'-'*17}")
+    
+    for category in category_order:
+        if category in remapped_counts:
+            count = remapped_counts[category]
+            percentage = (count / total_paths) * 100
+            sem_ids = sorted(remapped_sem_ids[category])
+            sem_ids_str = str(sem_ids)
+            
+            # Count unique instances
+            if category in ["walls", "other/background"]:
+                instance_str = "N/A (stuff)"
+            else:
+                unique_count = len(remapped_instances.get(category, set()))
+                instance_str = str(unique_count) if unique_count > 0 else "0"
+            
+            print(f"{category:<20} {count:>12,} {percentage:>11.2f}% {sem_ids_str:<30} {instance_str:>17}")
+    
+    # Print detailed breakdown
+    print(f"\n{'='*80}")
+    print("DETAILED REMAPPED BREAKDOWN")
+    print(f"{'='*80}")
+    
+    for category in category_order:
+        if category in remapped_sem_ids:
+            print(f"\n{category.upper()}:")
+            sem_ids = sorted(remapped_sem_ids[category])
+            
+            for sem_id in sem_ids:
+                count = semantic_counts.get(sem_id, 0)
+                percentage = (count / total_paths) * 100 if total_paths > 0 else 0
+                
+                # Get original name
+                if sem_id in CATEGORIES:
+                    name = CATEGORIES[sem_id]['name']
+                elif sem_id == 35:
+                    name = 'background'
+                else:
+                    name = f'unknown_{sem_id}'
+                
+                # Get unique instances
+                if sem_id in thing_instances:
+                    unique_instances = len(thing_instances[sem_id])
+                    instance_str = f"{unique_instances} instances"
+                else:
+                    instance_str = "stuff class"
+                
+                print(f"  {sem_id:>3}: {name:<20} {count:>10,} ({percentage:>5.2f}%) - {instance_str}")
 
 if __name__ == "__main__":
     import argparse
