@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """
 Single SVG file inference script for SymPoint model.
-Reads an SVG file, preprocesses it, and performs predictions.
+Reads an SVG file, preprocesses it, performs semantic and instance segmentation predictions,
+and maps the instance predictions back to the original SVG paths.
+
+Key features:
+- Performs semantic and instance segmentation on SVG files
+- Maps instance segmentation masks to original SVG path elements
+- Groups SVG paths by detected instances
+- Outputs a grouped SVG file with color-coded instances
 """
 
 import argparse
@@ -288,8 +295,18 @@ def perform_inference(model, data, device='cuda'):
     if instances_data is not None:
         # Check if instances_data is a tensor or list
         if isinstance(instances_data, list):
-            # If it's already a list of instances, use it directly
-            instances = instances_data
+            # If it's already a list of instances, process each one
+            for inst in instances_data:
+                # Convert numpy arrays to lists for JSON serialization
+                processed_inst = {}
+                for key, value in inst.items():
+                    if isinstance(value, np.ndarray):
+                        processed_inst[key] = value.tolist()
+                    elif torch.is_tensor(value):
+                        processed_inst[key] = value.cpu().numpy().tolist()
+                    else:
+                        processed_inst[key] = value
+                instances.append(processed_inst)
         elif torch.is_tensor(instances_data):
             # Process instance data - extract individual instances
             for inst_id in torch.unique(instances_data):
@@ -315,6 +332,173 @@ def perform_inference(model, data, device='cuda'):
         'coords': coords.cpu().numpy(),  # Keep original coords for visualization
         'semantic_labels': semantic_labels.cpu().numpy()
     }
+
+
+def map_instances_to_svg_paths(results, svg_data):
+    """Map instance segmentation masks to original SVG path indices.
+    
+    Returns a dictionary mapping instance_id to list of SVG element indices.
+    """
+    # Get the original number of elements (before point expansion)
+    num_elements = len(svg_data['commands'])
+    
+    # Each element generates 4 points in preprocessing
+    # So we need to map point indices back to element indices
+    instance_to_elements = {}
+    
+    for idx, inst in enumerate(results['instances']):
+        if 'mask' in inst and inst['mask'] is not None:
+            mask = inst['mask']
+            if isinstance(mask, list):
+                mask = np.array(mask)
+            
+            # Find which elements this instance covers
+            element_indices = set()
+            
+            # Get indices where mask is True
+            point_indices = np.where(mask)[0]
+            
+            for point_idx in point_indices:
+                # Each element has 4 points, so element_idx = point_idx // 4
+                element_idx = point_idx // 4
+                if element_idx < num_elements:  # Ensure we're within valid range
+                    element_indices.add(element_idx)
+            
+            if element_indices:
+                instance_to_elements[idx] = sorted(list(element_indices))
+    
+    return instance_to_elements
+
+
+def group_svg_paths_by_instance(svg_file_path, instance_to_elements, output_svg_path=None):
+    """Group SVG paths by instance and optionally save as a new SVG with groups.
+    
+    Args:
+        svg_file_path: Path to original SVG file
+        instance_to_elements: Dictionary mapping instance_id to list of element indices
+        output_svg_path: Optional path to save the grouped SVG
+    
+    Returns:
+        Dictionary with instance information including grouped paths
+    """
+    import xml.etree.ElementTree as ET
+    
+    # Parse SVG file
+    tree = ET.parse(svg_file_path)
+    root = tree.getroot()
+    
+    # Get SVG namespace
+    ns = {'svg': 'http://www.w3.org/2000/svg'}
+    if root.tag.startswith('{'):
+        ns['svg'] = root.tag.split('}')[0][1:]
+    
+    # Create a list to store all drawable elements in order
+    all_elements = []
+    element_to_original = {}  # Map from our index to original element
+    
+    # Collect all drawable elements (paths, circles, ellipses, etc.)
+    idx = 0
+    for elem in root.iter():
+        if elem.tag.endswith(('path', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'rect')):
+            all_elements.append(elem)
+            element_to_original[idx] = elem
+            idx += 1
+    
+    # Group paths by instance
+    instance_groups = {}
+    
+    for instance_id, element_indices in instance_to_elements.items():
+        instance_groups[instance_id] = {
+            'elements': [],
+            'element_indices': element_indices,
+            'paths': []
+        }
+        
+        for elem_idx in element_indices:
+            if elem_idx < len(all_elements):
+                elem = all_elements[elem_idx]
+                instance_groups[instance_id]['elements'].append(elem)
+                
+                # Extract path data or shape info
+                if elem.tag.endswith('path'):
+                    instance_groups[instance_id]['paths'].append({
+                        'type': 'path',
+                        'd': elem.get('d', ''),
+                        'element': elem
+                    })
+                elif elem.tag.endswith('circle'):
+                    instance_groups[instance_id]['paths'].append({
+                        'type': 'circle',
+                        'cx': elem.get('cx', '0'),
+                        'cy': elem.get('cy', '0'),
+                        'r': elem.get('r', '0'),
+                        'element': elem
+                    })
+                elif elem.tag.endswith('ellipse'):
+                    instance_groups[instance_id]['paths'].append({
+                        'type': 'ellipse',
+                        'cx': elem.get('cx', '0'),
+                        'cy': elem.get('cy', '0'),
+                        'rx': elem.get('rx', '0'),
+                        'ry': elem.get('ry', '0'),
+                        'element': elem
+                    })
+                elif elem.tag.endswith('rect'):
+                    instance_groups[instance_id]['paths'].append({
+                        'type': 'rect',
+                        'x': elem.get('x', '0'),
+                        'y': elem.get('y', '0'),
+                        'width': elem.get('width', '0'),
+                        'height': elem.get('height', '0'),
+                        'element': elem
+                    })
+                elif elem.tag.endswith('line'):
+                    instance_groups[instance_id]['paths'].append({
+                        'type': 'line',
+                        'x1': elem.get('x1', '0'),
+                        'y1': elem.get('y1', '0'),
+                        'x2': elem.get('x2', '0'),
+                        'y2': elem.get('y2', '0'),
+                        'element': elem
+                    })
+    
+    # Optionally save grouped SVG
+    if output_svg_path:
+        # Create a new SVG with groups
+        new_root = ET.Element('svg')
+        # Copy attributes from original root
+        for attr, value in root.attrib.items():
+            new_root.set(attr, value)
+        
+        # Add namespace if needed
+        if ns['svg'] != 'http://www.w3.org/2000/svg':
+            new_root.set('xmlns', ns['svg'])
+        
+        # Create groups for each instance
+        colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', 
+                  '#FFA500', '#800080', '#FFC0CB', '#A52A2A']
+        
+        for idx, (instance_id, group_data) in enumerate(instance_groups.items()):
+            g = ET.SubElement(new_root, 'g')
+            g.set('id', f'instance_{instance_id}')
+            g.set('stroke', colors[idx % len(colors)])
+            g.set('fill', 'none')
+            g.set('stroke-width', '2')
+            
+            # Add all elements of this instance to the group
+            for elem in group_data['elements']:
+                # Clone the element
+                new_elem = ET.SubElement(g, elem.tag)
+                for attr, value in elem.attrib.items():
+                    if attr not in ['stroke', 'fill', 'stroke-width']:  # Override style
+                        new_elem.set(attr, value)
+        
+        # Write the new SVG
+        tree = ET.ElementTree(new_root)
+        tree.write(output_svg_path, encoding='utf-8', xml_declaration=True)
+        print(f"Grouped SVG saved to: {output_svg_path}")
+    
+    return instance_groups
 
 
 def visualize_results(results, svg_file_path, output_path=None):
@@ -480,15 +664,22 @@ def visualize_results(results, svg_file_path, output_path=None):
     instance_colors = plt.cm.rainbow(np.linspace(0, 1, len(results['instances'])))
     
     for idx, inst in enumerate(results['instances']):
-        if 'masks' in inst and inst['masks'] is not None:
-            masks = inst['masks']
-            if isinstance(masks, np.ndarray):
-                mask = masks > 0.5
+        # Handle both 'mask' and 'masks' keys
+        mask_data = inst.get('mask') or inst.get('masks')
+        if mask_data is not None:
+            if isinstance(mask_data, np.ndarray):
+                mask = mask_data > 0.5
+            elif isinstance(mask_data, list) and len(mask_data) > 0:
+                # Convert boolean list to numpy array
+                mask = np.array(mask_data, dtype=bool)
             else:
-                mask = np.array(masks) > 0.5
+                mask = np.array(mask_data) > 0.5
             
             if np.sum(mask) > 0:
                 label = inst.get('labels', inst.get('label', 'Unknown'))
+                if isinstance(label, list):
+                    label = label[0] if label else 'Unknown'
+                    
                 score = inst.get('scores', inst.get('score', 0.0))
                 if isinstance(score, (list, np.ndarray)):
                     score = score[0] if len(score) > 0 else 0.0
@@ -567,12 +758,37 @@ def main():
         # Step 4: Run inference
         results = perform_inference(model, processed_data, args.device)
         
-        # Step 5: Format and save results
+        # Step 5: Map instances to SVG paths
+        instance_to_elements = map_instances_to_svg_paths(results, svg_data)
+        
+        # Step 6: Group SVG paths by instance
+        grouped_svg_path = None
+        if args.output:
+            # Create grouped SVG output path
+            base_name = os.path.splitext(args.output)[0]
+            grouped_svg_path = f"{base_name}_grouped.svg"
+        
+        instance_groups = group_svg_paths_by_instance(
+            args.svg_file, 
+            instance_to_elements,
+            grouped_svg_path
+        )
+        
+        # Step 7: Format and save results
         output_data = {
             'svg_file': args.svg_file,
             'num_elements': len(svg_data['commands']),
             'num_points': processed_data['num_points'],
             'predictions': results,
+            'instance_to_elements': instance_to_elements,
+            'instance_groups': {
+                str(k): {
+                    'element_indices': v['element_indices'],
+                    'num_elements': len(v['element_indices']),
+                    'paths': [{'type': p['type'], **{k: v for k, v in p.items() if k not in ['type', 'element']}} 
+                             for p in v['paths']]
+                } for k, v in instance_groups.items()
+            },
             'svg_dimensions': {
                 'width': svg_data.get('width', 0),
                 'height': svg_data.get('height', 0)
@@ -582,53 +798,58 @@ def main():
         # Print summary
         print("\n=== Inference Results ===")
         print(f"Number of instances detected: {results['num_instances']}")
+        
+        # Print detailed instance info
         if results['instances']:
             print("\nTop 5 instances:")
-            for i, inst in enumerate(results['instances'][:5]):
-                # Debug: print instance keys for first instance
-                if i == 0:
-                    print(f"Instance keys: {list(inst.keys())}")
-                    if 'masks' in inst:
-                        mask_val = inst['masks']
-                        print(f"Mask type: {type(mask_val)}, shape/len: {len(mask_val) if hasattr(mask_val, '__len__') else 'N/A'}")
+            for idx, inst in enumerate(results['instances'][:5]):
+                # Get label - handle different formats
+                label = inst.get('label', inst.get('labels', 'Unknown'))
+                if isinstance(label, list):
+                    label = label[0] if label else 'Unknown'
                 
-                # Handle different instance formats - check types
-                labels = inst.get('labels', None)
-                scores = inst.get('scores', None)
-                masks = inst.get('masks', None)
+                # Get score - handle different formats
+                score = inst.get('score', inst.get('scores', 0.0))
+                if isinstance(score, list):
+                    score = score[0] if score else 0.0
                 
-                # Get label - could be int or list
-                if isinstance(labels, int):
-                    label = labels
-                elif isinstance(labels, list) and labels:
-                    label = labels[0]
-                else:
-                    label = 'Unknown'
-                
-                # Get score - could be float or list
-                if isinstance(scores, (int, float)):
-                    score = float(scores)
-                elif isinstance(scores, list) and scores:
-                    score = float(scores[0])
-                else:
-                    score = 0.0
-                
-                # Count points from mask
-                if masks is not None:
-                    if isinstance(masks, np.ndarray):
-                        # Binary mask - count True/1 values
-                        num_points = int(np.sum(masks > 0.5))
-                    elif isinstance(masks, list) and len(masks) > 0:
-                        if isinstance(masks[0], list):
-                            num_points = sum(masks[0]) if masks[0] else 0
-                        else:
-                            num_points = sum(1 for m in masks if m > 0.5)
+                # Get number of points
+                num_points = inst.get('num_points', 0)
+                if num_points == 0 and 'mask' in inst:
+                    # Calculate from mask if not provided
+                    mask = inst['mask']
+                    if isinstance(mask, list):
+                        num_points = sum(mask)
                     else:
-                        num_points = 0
-                else:
-                    num_points = inst.get('num_points', 0)
+                        num_points = np.sum(mask)
                 
-                print(f"  {i+1}. Label: {label}, Score: {score:.3f}, Points: {num_points}")
+                print(f"  {idx+1}. Label: {label}, Score: {score:.3f}, Points: {num_points}")
+        
+        # Print instance grouping summary
+        if instance_to_elements:
+            print(f"\n=== Instance to SVG Path Mapping ===")
+            print(f"Found {len(instance_to_elements)} instances mapped to SVG elements")
+            
+            for instance_id, element_indices in sorted(instance_to_elements.items())[:5]:
+                if instance_id < len(results['instances']):
+                    inst = results['instances'][instance_id]
+                    label = inst.get('label', inst.get('labels', 'Unknown'))
+                    if isinstance(label, list):
+                        label = label[0] if label else 'Unknown'
+                    print(f"\nInstance {instance_id} (Class: {label}):")
+                    print(f"  - Contains {len(element_indices)} SVG elements")
+                    print(f"  - Element indices: {element_indices[:10]}{'...' if len(element_indices) > 10 else ''}")
+                    
+                    # Show element types if available
+                    if instance_id in instance_groups:
+                        types = [p['type'] for p in instance_groups[instance_id]['paths']]
+                        type_counts = {}
+                        for t in types:
+                            type_counts[t] = type_counts.get(t, 0) + 1
+                        print(f"  - Element types: {dict(type_counts)}")
+        
+        if grouped_svg_path and os.path.exists(grouped_svg_path):
+            print(f"\n✓ Grouped SVG saved to: {grouped_svg_path}")
         
         # Save results if output specified
         if args.output:
