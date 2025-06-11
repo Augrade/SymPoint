@@ -30,7 +30,7 @@ class SVGNet(nn.Module):
         coords,feats,semantic_labels,offsets,lengths = batch
         return self._forward(coords,feats,offsets,semantic_labels,lengths,return_loss=return_loss)
      
-    def prepare_targets(self,semantic_labels,bg_ind=-1,bg_sem=35):
+    def prepare_targets(self,semantic_labels,bg_ind=-1,bg_sem=None):
         
         instance_ids = semantic_labels[:,1].cpu().numpy()
         semantic_ids = semantic_labels[:,0].cpu().numpy()
@@ -44,8 +44,13 @@ class SVGNet(nn.Module):
         cls_targets,mask_targets = [], []
         svg_len = semantic_ids.shape[0]
 
+        # If bg_sem not specified, use the maximum semantic class ID as background
+        if bg_sem is None:
+            bg_sem = self.cfg.semantic_classes if hasattr(self, 'cfg') else 35
+            
         for (sem_id,ins_id) in keys:
-            if sem_id==35 and ins_id==-1: continue # background
+            # Skip background - check if it's the background class and has no instance
+            if sem_id >= bg_sem and ins_id == -1: continue
 
             tensor_mask = torch.zeros(svg_len)
             ind1 = np.where(semantic_ids==sem_id)[0]
@@ -55,7 +60,7 @@ class SVGNet(nn.Module):
             cls_targets.append(sem_id)
             mask_targets.append(tensor_mask.unsqueeze(1))
 
-        cls_targets = torch.tensor(cls_targets) if cls_targets else torch.tensor([35])
+        cls_targets = torch.tensor(cls_targets) if cls_targets else torch.tensor([bg_sem])
         mask_targets = torch.cat(mask_targets,dim=1) if mask_targets else torch.zeros(svg_len,1)
         
         

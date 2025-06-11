@@ -173,6 +173,8 @@ class SVGDataset(Dataset):
             remapped_semanticIds = np.zeros_like(semanticIds)
             for orig_id, new_id in self.semantic_remapping.items():
                 remapped_semanticIds[semanticIds == orig_id] = new_id
+            # Also remap the background class (35 -> 6)
+            remapped_semanticIds[semanticIds == 35] = 6
             semanticIds = remapped_semanticIds
         label = np.concatenate([semanticIds[:,None],instanceIds[:,None]],axis=1)
         return coord, feat, label,lengths
@@ -234,8 +236,10 @@ class SVGDataset(Dataset):
         if self.aug.cutmix.enable and np.random.rand() < self.aug.aug_prob:
             
             unique_label = np.unique(label,axis=0)
+            # Determine stuff class threshold based on whether using remapped classes
+            stuff_threshold = 5 if getattr(self, 'use_remapped_classes', False) else 30
             for sem,ins in unique_label:
-                if sem >=30: continue
+                if sem >= stuff_threshold: continue  # Skip stuff classes
                 valid = np.logical_and(label[:,0]==sem,label[:,1]==ins)
                 if len(self.instance_queues)<=self.aug.cutmix.queueK: 
                     self.instance_queues.insert(0,{

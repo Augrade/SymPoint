@@ -113,8 +113,10 @@ def train(epoch, model, optimizer, scheduler, scaler, train_loader, cfg, logger,
 
 def validate(epoch, model, optimizer, val_loader, cfg, logger, writer):
     logger.info("Validation")
-    sem_point_eval = PointWiseEval(num_classes=cfg.model.semantic_classes,ignore_label=35,gpu_num=dist.get_world_size())
-    instance_eval = InstanceEval(num_classes=cfg.model.semantic_classes,ignore_label=35,gpu_num=dist.get_world_size())
+    # For remapped classes, background is class 6; for original, it's class 35
+    ignore_label = 6 if cfg.model.semantic_classes == 7 else cfg.model.semantic_classes
+    sem_point_eval = PointWiseEval(num_classes=cfg.model.semantic_classes,ignore_label=ignore_label,gpu_num=dist.get_world_size())
+    instance_eval = InstanceEval(num_classes=cfg.model.semantic_classes,ignore_label=ignore_label,gpu_num=dist.get_world_size())
     meter_dict = {}
     torch.cuda.empty_cache()
     with torch.no_grad():

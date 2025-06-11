@@ -56,8 +56,10 @@ def main():
     dataloader = build_dataloader(args,val_set, training=False, dist=args.dist, **cfg.dataloader.test)
 
     time_arr = []
-    sem_point_eval = PointWiseEval(num_classes=cfg.model.semantic_classes,ignore_label=35,gpu_num=dist.get_world_size())
-    instance_eval = InstanceEval(num_classes=cfg.model.semantic_classes,ignore_label=35,gpu_num=dist.get_world_size())
+    # For remapped classes, background is class 6; for original, it's class 35
+    ignore_label = 6 if cfg.model.semantic_classes == 7 else cfg.model.semantic_classes
+    sem_point_eval = PointWiseEval(num_classes=cfg.model.semantic_classes,ignore_label=ignore_label,gpu_num=dist.get_world_size())
+    instance_eval = InstanceEval(num_classes=cfg.model.semantic_classes,ignore_label=ignore_label,gpu_num=dist.get_world_size())
     
     with torch.no_grad():
         model.eval()
