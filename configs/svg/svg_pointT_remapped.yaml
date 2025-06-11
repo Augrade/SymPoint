@@ -48,7 +48,7 @@ data:
   train:
     type: 'svg'
     data_root: 'dataset/train/jsons'
-    repeat: 5
+    repeat: 2
     split: "train"
     data_norm: "mean"
     exclude_railing: false  # Not needed when using remapped classes (railing becomes "other/background")
