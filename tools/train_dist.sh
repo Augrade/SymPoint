@@ -10,7 +10,7 @@ OMP_NUM_THREADS=$GPUS /home/kai/miniconda3/envs/spv1/bin/torchrun --nproc_per_no
 	--dist \
 	--exp_name remapped_classes \
 	--sync_bn \
-	--resume /home/kai/SymPoint/work_dirs/svg/svg_pointT_remapped/remapped_classes/best.pth
+	--resume /home/kai/SymPoint/work_dirs/svg/svg_pointT_remapped/remapped_classes/latest.pth
 
 # For training without railing (uncomment to use)
 # OMP_NUM_THREADS=$GPUS /home/kai/miniconda3/envs/spv1/bin/torchrun --nproc_per_node=$GPUS --master_port=$((RANDOM + 10000)) tools/train.py \

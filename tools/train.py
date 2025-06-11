@@ -252,7 +252,12 @@ def main():
     start_epoch = 1
     if args.resume:
         logger.info(f"Resume from {args.resume}")
-        start_epoch = load_checkpoint(args.resume, logger, model, optimizer=optimizer)
+        try:
+            start_epoch = load_checkpoint(args.resume, logger, model, optimizer=optimizer)
+        except AssertionError:
+            logger.warning("Checkpoint doesn't contain optimizer state. Loading model only.")
+            start_epoch = load_checkpoint(args.resume, logger, model, optimizer=None)
+            logger.info("Starting with fresh optimizer state.")
     elif cfg.pretrain:
         logger.info(f"Load pretrain from {cfg.pretrain}")
         load_checkpoint(cfg.pretrain, logger, model)
