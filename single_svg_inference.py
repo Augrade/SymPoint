@@ -329,8 +329,8 @@ def perform_inference(model, data, device='cuda'):
         'semantic_predictions': semantic_pred.tolist(),
         'instances': instances,
         'num_instances': len(instances),
-        'coords': coords.cpu().numpy(),  # Keep original coords for visualization
-        'semantic_labels': semantic_labels.cpu().numpy()
+        'coords': coords.cpu().numpy(),  # Keep original coords for visualization (numpy array for viz)
+        'semantic_labels': semantic_labels.cpu().numpy()  # Keep as numpy for visualization
     }
 
 
@@ -775,11 +775,18 @@ def main():
         )
         
         # Step 7: Format and save results
+        # Create a clean predictions dict without numpy arrays
+        clean_predictions = {
+            'semantic_predictions': results['semantic_predictions'],
+            'instances': results['instances'],
+            'num_instances': results['num_instances']
+        }
+        
         output_data = {
             'svg_file': args.svg_file,
             'num_elements': len(svg_data['commands']),
             'num_points': processed_data['num_points'],
-            'predictions': results,
+            'predictions': clean_predictions,
             'instance_to_elements': instance_to_elements,
             'instance_groups': {
                 str(k): {
