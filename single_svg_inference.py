@@ -44,7 +44,7 @@ def parse_svg_file(svg_path):
     return data
 
 
-def preprocess_svg_data(svg_data, norm_type='mean', min_points=2048):
+def preprocess_svg_data(svg_data, norm_type='mean', use_all_points=False):
     """Convert parsed SVG data to model input format."""
     
     # Extract data
@@ -111,26 +111,34 @@ def preprocess_svg_data(svg_data, norm_type='mean', min_points=2048):
     # Set instance ID to -1 for background/stuff classes
     instance_labels[semantic_labels >= 35] = -1
     
-    # Pad to minimum points if necessary
+    # Handle point count based on use_all_points flag
     num_points = point_features.shape[0]
-    if num_points < min_points:
-        pad_size = min_points - num_points
-        point_features = np.pad(point_features, ((0, pad_size), (0, 0)), mode='constant')
-        semantic_labels = np.pad(semantic_labels, (0, pad_size), mode='constant', constant_values=35)
-        instance_labels = np.pad(instance_labels, (0, pad_size), mode='constant', constant_values=-1)
     
-    # Sample if too many points
-    if num_points > min_points:
-        # Use random sampling to match training behavior
-        sample_idx = np.random.choice(num_points, min_points, replace=False)
+    if use_all_points:
+        # Use all points without padding or sampling
+        actual_num_points = num_points
+        print(f"Using all {actual_num_points} points from SVG")
+    else:
+        # Original behavior: pad to min_points (default 2048)
+        min_points = 2048
+        if num_points < min_points:
+            pad_size = min_points - num_points
+            point_features = np.pad(point_features, ((0, pad_size), (0, 0)), mode='constant')
+            semantic_labels = np.pad(semantic_labels, (0, pad_size), mode='constant', constant_values=35)
+            instance_labels = np.pad(instance_labels, (0, pad_size), mode='constant', constant_values=-1)
         
-        point_features = point_features[sample_idx]
-        semantic_labels = semantic_labels[sample_idx]
-        instance_labels = instance_labels[sample_idx]
-        num_points = min_points
-    
-    # Update num_points to reflect actual tensor size after padding/sampling
-    actual_num_points = point_features.shape[0]
+        # Sample if too many points
+        elif num_points > min_points:
+            # Use random sampling to match training behavior
+            sample_idx = np.random.choice(num_points, min_points, replace=False)
+            
+            point_features = point_features[sample_idx]
+            semantic_labels = semantic_labels[sample_idx]
+            instance_labels = instance_labels[sample_idx]
+            num_points = min_points
+        
+        # Update num_points to reflect actual tensor size after padding/sampling
+        actual_num_points = point_features.shape[0]
     
     return {
         'points': torch.from_numpy(point_features).float(),
@@ -744,6 +752,8 @@ def main():
                         help='Device to run inference on')
     parser.add_argument('--visualize', action='store_true', help='Visualize the results')
     parser.add_argument('--vis_output', type=str, help='Path to save visualization image')
+    parser.add_argument('--use_all_points', action='store_true', 
+                        help='Use all points from SVG instead of padding/sampling to fixed size')
     
     args = parser.parse_args()
     
@@ -769,12 +779,15 @@ def main():
         print(f"Parsed {len(svg_data['commands'])} elements from SVG")
         
         # Step 2: Preprocess data
-        min_points = 64 if args.debug else args.min_points  # Use much fewer points in debug mode
-        processed_data = preprocess_svg_data(svg_data, args.norm_type, min_points)
-        print(f"Preprocessed data: {processed_data['points'].shape}")
+        if args.use_all_points:
+            processed_data = preprocess_svg_data(svg_data, args.norm_type, use_all_points=True)
+        else:
+            min_points = 64 if args.debug else args.min_points  # Use much fewer points in debug mode
+            processed_data = preprocess_svg_data(svg_data, args.norm_type, use_all_points=False)
+            if args.debug:
+                print("Debug mode: Using reduced point count (64) for testing")
         
-        if args.debug:
-            print("Debug mode: Using reduced point count (64) for testing")
+        print(f"Preprocessed data: {processed_data['points'].shape}")
         
         # Step 3: Load model
         model = load_model(args.checkpoint, config, args.device)
