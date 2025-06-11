@@ -9,7 +9,7 @@ model:
   shared_decoder: True
   dim_feedforward: 512
   hidden_dim: 256
-  num_queries: 500
+  num_queries: 300  # Reduced from 500 to save memory
   gauss_scale: 1.0
   normalize_pos_enc: False
   #dn
@@ -87,7 +87,7 @@ data:
 
 dataloader:
   train:
-    batch_size: 2
+    batch_size: 1
     num_workers: 2
   test:
     batch_size: 1
@@ -109,9 +109,10 @@ scheduler:
   lr_decay: 0.1
   lr_decay_epochs: [18,24]
 
-fp16: False
+fp16: True  # Enable mixed precision to save memory
 epochs: 50
 step_epoch: 30
 save_freq: 10
 pretrain: '' # We can load pretrain of ScanNetV2 or train from scratch
 work_dir: ''
+gradient_accumulation_steps: 2  # Accumulate gradients over 2 steps
