@@ -392,6 +392,56 @@ def map_instances_to_svg_paths(results, svg_data):
     return instance_to_elements
 
 
+def map_semantic_labels_to_svg_paths(results, svg_data):
+    """Map semantic segmentation results to SVG elements by class.
+    
+    Returns a dictionary mapping class_id to list of SVG element indices.
+    """
+    semantic_labels = results['semantic_labels']
+    num_elements = len(svg_data['commands'])
+    
+    # Class names for reference
+    class_names = {
+        0: 'single door', 1: 'double door', 2: 'sliding door', 3: 'folding door',
+        4: 'revolving door', 5: 'rolling door', 6: 'window', 7: 'bay window',
+        8: 'blind window', 9: 'opening symbol', 10: 'sofa', 11: 'bed',
+        12: 'chair', 13: 'table', 14: 'TV cabinet', 15: 'Wardrobe',
+        16: 'cabinet', 17: 'gas stove', 18: 'sink', 19: 'refrigerator',
+        20: 'airconditioner', 21: 'bath', 22: 'bath tub', 23: 'washing machine',
+        24: 'squat toilet', 25: 'urinal', 26: 'toilet', 27: 'stairs',
+        28: 'elevator', 29: 'escalator', 30: 'row chairs', 31: 'parking spot',
+        32: 'wall', 33: 'curtain wall', 34: 'railing', 35: 'background'
+    }
+    
+    semantic_to_elements = {}
+    
+    # Get unique classes present in the predictions
+    unique_classes = np.unique(semantic_labels)
+    
+    for class_id in unique_classes:
+        if class_id == 35:  # Skip background
+            continue
+            
+        # Find all points classified as this class
+        class_point_indices = np.where(semantic_labels == class_id)[0]
+        
+        # Map to element indices
+        element_indices = set()
+        for point_idx in class_point_indices:
+            element_idx = point_idx // 4
+            if element_idx < num_elements:
+                element_indices.add(element_idx)
+        
+        if element_indices:
+            semantic_to_elements[int(class_id)] = {
+                'element_indices': [int(x) for x in sorted(list(element_indices))],
+                'class_name': class_names.get(class_id, f'Class {class_id}'),
+                'num_elements': len(element_indices)
+            }
+    
+    return semantic_to_elements
+
+
 def group_svg_paths_by_instance(svg_file_path, instance_to_elements, output_svg_path=None):
     """Group SVG paths by instance and optionally save as a new SVG with groups.
     
@@ -534,6 +584,153 @@ def group_svg_paths_by_instance(svg_file_path, instance_to_elements, output_svg_
         print(f"Grouped SVG saved to: {output_svg_path}")
     
     return instance_groups
+
+
+def group_svg_paths_by_semantic_class(svg_file_path, semantic_to_elements, output_svg_path=None):
+    """Group SVG paths by semantic class and optionally save as a new SVG with groups.
+    
+    Args:
+        svg_file_path: Path to original SVG file
+        semantic_to_elements: Dictionary mapping class_id to element info
+        output_svg_path: Optional path to save the grouped SVG
+    
+    Returns:
+        Dictionary with semantic class information including grouped paths
+    """
+    import xml.etree.ElementTree as ET
+    
+    # Parse SVG file
+    tree = ET.parse(svg_file_path)
+    root = tree.getroot()
+    
+    # Get SVG namespace
+    ns = {'svg': 'http://www.w3.org/2000/svg'}
+    if root.tag.startswith('{'):
+        ns['svg'] = root.tag.split('}')[0][1:]
+    
+    # Create a list to store all drawable elements in order
+    all_elements = []
+    element_to_original = {}  # Map from our index to original element
+    
+    # Collect all drawable elements (paths, circles, ellipses, etc.)
+    idx = 0
+    for elem in root.iter():
+        if elem.tag.endswith(('path', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'rect')):
+            all_elements.append(elem)
+            element_to_original[idx] = elem
+            idx += 1
+    
+    # Group paths by semantic class
+    semantic_groups = {}
+    
+    for class_id, class_info in semantic_to_elements.items():
+        semantic_groups[class_id] = {
+            'class_name': class_info['class_name'],
+            'element_indices': class_info['element_indices'],
+            'num_elements': class_info['num_elements'],
+            'elements': [],
+            'paths': []
+        }
+        
+        for elem_idx in class_info['element_indices']:
+            if elem_idx < len(all_elements):
+                elem = all_elements[elem_idx]
+                semantic_groups[class_id]['elements'].append(elem)
+                
+                # Extract path data or shape info
+                if elem.tag.endswith('path'):
+                    semantic_groups[class_id]['paths'].append({
+                        'type': 'path',
+                        'd': elem.get('d', ''),
+                        'element': elem
+                    })
+                elif elem.tag.endswith('circle'):
+                    semantic_groups[class_id]['paths'].append({
+                        'type': 'circle',
+                        'cx': elem.get('cx', '0'),
+                        'cy': elem.get('cy', '0'),
+                        'r': elem.get('r', '0'),
+                        'element': elem
+                    })
+                elif elem.tag.endswith('ellipse'):
+                    semantic_groups[class_id]['paths'].append({
+                        'type': 'ellipse',
+                        'cx': elem.get('cx', '0'),
+                        'cy': elem.get('cy', '0'),
+                        'rx': elem.get('rx', '0'),
+                        'ry': elem.get('ry', '0'),
+                        'element': elem
+                    })
+                elif elem.tag.endswith('rect'):
+                    semantic_groups[class_id]['paths'].append({
+                        'type': 'rect',
+                        'x': elem.get('x', '0'),
+                        'y': elem.get('y', '0'),
+                        'width': elem.get('width', '0'),
+                        'height': elem.get('height', '0'),
+                        'element': elem
+                    })
+                elif elem.tag.endswith('line'):
+                    semantic_groups[class_id]['paths'].append({
+                        'type': 'line',
+                        'x1': elem.get('x1', '0'),
+                        'y1': elem.get('y1', '0'),
+                        'x2': elem.get('x2', '0'),
+                        'y2': elem.get('y2', '0'),
+                        'element': elem
+                    })
+    
+    # Optionally save grouped SVG
+    if output_svg_path:
+        # Create a new SVG with groups
+        new_root = ET.Element('svg')
+        # Copy attributes from original root
+        for attr, value in root.attrib.items():
+            new_root.set(attr, value)
+        
+        # Add namespace if needed
+        if ns['svg'] != 'http://www.w3.org/2000/svg':
+            new_root.set('xmlns', ns['svg'])
+        
+        # Create groups for each semantic class with distinct colors
+        semantic_colors = [
+            {'stroke': '#FF0000', 'fill': '#FF000040'},  # Red - walls
+            {'stroke': '#00FF00', 'fill': '#00FF0040'},  # Green - doors
+            {'stroke': '#0000FF', 'fill': '#0000FF40'},  # Blue - windows
+            {'stroke': '#FF8000', 'fill': '#FF800040'},  # Orange - furniture
+            {'stroke': '#FF00FF', 'fill': '#FF00FF40'},  # Magenta - stairs
+            {'stroke': '#00FFFF', 'fill': '#00FFFF40'},  # Cyan - equipment
+            {'stroke': '#FFFF00', 'fill': '#FFFF0040'},  # Yellow - other
+            {'stroke': '#800080', 'fill': '#80008040'},  # Purple
+            {'stroke': '#FFC0CB', 'fill': '#FFC0CB40'},  # Pink
+            {'stroke': '#A52A2A', 'fill': '#A52A2A40'},  # Brown
+        ]
+        
+        for idx, (class_id, group_data) in enumerate(semantic_groups.items()):
+            g = ET.SubElement(new_root, 'g')
+            g.set('id', f'semantic_class_{class_id}')
+            g.set('class', f'semantic_{group_data["class_name"].replace(" ", "_")}')
+            color = semantic_colors[idx % len(semantic_colors)]
+            g.set('stroke', color['stroke'])
+            g.set('fill', color['fill'])
+            g.set('stroke-width', '3')
+            
+            # Add all elements of this semantic class to the group
+            for elem in group_data['elements']:
+                # Clone the element without style attributes (group styling will apply)
+                tag_name = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag  # Remove namespace
+                new_elem = ET.SubElement(g, tag_name)
+                for attr, value in elem.attrib.items():
+                    # Skip style attributes as group will provide them
+                    if attr not in ['stroke', 'fill', 'stroke-width', 'style']:
+                        new_elem.set(attr, value)
+        
+        # Write the new SVG
+        tree = ET.ElementTree(new_root)
+        tree.write(output_svg_path, encoding='utf-8', xml_declaration=True)
+        print(f"Semantic grouped SVG saved to: {output_svg_path}")
+    
+    return semantic_groups
 
 
 def visualize_results(results, svg_file_path, output_path=None):
@@ -800,20 +997,33 @@ def main():
         # Step 5: Map instances to SVG paths
         instance_to_elements = map_instances_to_svg_paths(results, svg_data)
         
-        # Step 6: Group SVG paths by instance
-        grouped_svg_path = None
-        if args.output:
-            # Create grouped SVG output path
-            base_name = os.path.splitext(args.output)[0]
-            grouped_svg_path = f"{base_name}_grouped.svg"
+        # Step 6: Map semantic labels to SVG paths
+        semantic_to_elements = map_semantic_labels_to_svg_paths(results, svg_data)
         
+        # Step 7: Group SVG paths by instance and semantic class
+        instance_grouped_svg_path = None
+        semantic_grouped_svg_path = None
+        if args.output:
+            # Create grouped SVG output paths
+            base_name = os.path.splitext(args.output)[0]
+            instance_grouped_svg_path = f"{base_name}_instance_grouped.svg"
+            semantic_grouped_svg_path = f"{base_name}_semantic_grouped.svg"
+        
+        # Create instance-based grouping
         instance_groups = group_svg_paths_by_instance(
             args.svg_file, 
             instance_to_elements,
-            grouped_svg_path
+            instance_grouped_svg_path
         )
         
-        # Step 7: Format and save results
+        # Create semantic-based grouping
+        semantic_groups = group_svg_paths_by_semantic_class(
+            args.svg_file,
+            semantic_to_elements,
+            semantic_grouped_svg_path
+        )
+        
+        # Step 8: Format and save results
         # Create a clean predictions dict without numpy arrays
         clean_predictions = {
             'semantic_predictions': results['semantic_predictions'],
@@ -827,6 +1037,7 @@ def main():
             'num_points': processed_data['num_points'],
             'predictions': clean_predictions,
             'instance_to_elements': instance_to_elements,
+            'semantic_to_elements': semantic_to_elements,
             'instance_groups': {
                 str(k): {
                     'element_indices': v['element_indices'],
@@ -834,6 +1045,15 @@ def main():
                     'paths': [{'type': p['type'], **{k: v for k, v in p.items() if k not in ['type', 'element']}} 
                              for p in v['paths']]
                 } for k, v in instance_groups.items()
+            },
+            'semantic_groups': {
+                str(k): {
+                    'class_name': v['class_name'],
+                    'element_indices': v['element_indices'],
+                    'num_elements': v['num_elements'],
+                    'paths': [{'type': p['type'], **{k: v for k, v in p.items() if k not in ['type', 'element']}} 
+                             for p in v['paths']]
+                } for k, v in semantic_groups.items()
             },
             'svg_dimensions': {
                 'width': svg_data.get('width', 0),
@@ -894,8 +1114,22 @@ def main():
                             type_counts[t] = type_counts.get(t, 0) + 1
                         print(f"  - Element types: {dict(type_counts)}")
         
-        if grouped_svg_path and os.path.exists(grouped_svg_path):
-            print(f"\n✓ Grouped SVG saved to: {grouped_svg_path}")
+        # Print semantic grouping summary
+        if semantic_to_elements:
+            print(f"\n=== Semantic Segmentation to SVG Path Mapping ===")
+            print(f"Found {len(semantic_to_elements)} semantic classes mapped to SVG elements")
+            
+            for class_id, class_info in sorted(semantic_to_elements.items())[:5]:
+                print(f"\nClass {class_id} ({class_info['class_name']}):")
+                print(f"  - Contains {class_info['num_elements']} SVG elements")
+                print(f"  - Element indices: {class_info['element_indices'][:10]}{'...' if len(class_info['element_indices']) > 10 else ''}")
+        
+        # Print file output summary
+        if instance_grouped_svg_path and os.path.exists(instance_grouped_svg_path):
+            print(f"\n✓ Instance grouped SVG saved to: {instance_grouped_svg_path}")
+        
+        if semantic_grouped_svg_path and os.path.exists(semantic_grouped_svg_path):
+            print(f"✓ Semantic grouped SVG saved to: {semantic_grouped_svg_path}")
         
         # Save results if output specified
         if args.output:
