@@ -346,24 +346,34 @@ def map_instances_to_svg_paths(results, svg_data):
     # So we need to map point indices back to element indices
     instance_to_elements = {}
     
+    print(f"Debug: Mapping instances to elements. Total elements: {num_elements}")
+    
     for idx, inst in enumerate(results['instances']):
-        if 'mask' in inst and inst['mask'] is not None:
-            mask = inst['mask']
-            if isinstance(mask, list):
-                mask = np.array(mask)
+        # Handle both 'mask' and 'masks' keys
+        mask_data = inst.get('mask') or inst.get('masks')
+        if mask_data is not None:
+            if isinstance(mask_data, list):
+                mask = np.array(mask_data, dtype=bool)
+            else:
+                mask = mask_data.astype(bool)
             
             # Find which elements this instance covers
             element_indices = set()
             
             # Get indices where mask is True
             point_indices = np.where(mask)[0]
+            print(f"Debug: Instance {idx} has {len(point_indices)} true points")
             
             for point_idx in point_indices:
                 # Each element has 4 points, so element_idx = point_idx // 4
                 element_idx = point_idx // 4
                 if element_idx < num_elements:  # Ensure we're within valid range
                     element_indices.add(element_idx)
+                else:
+                    # This point is in the padded region
+                    continue
             
+            print(f"Debug: Instance {idx} maps to {len(element_indices)} elements")
             if element_indices:
                 instance_to_elements[idx] = sorted(list(element_indices))
     
