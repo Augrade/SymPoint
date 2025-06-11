@@ -71,6 +71,9 @@ def preprocess_svg_data(svg_data, norm_type='mean', use_all_points=False):
             coords[i * 4 + j, 1] = svg_args[i * 8 + j * 2 + 1]  # y
             coords[i * 4 + j, 2] = 0                         # z (always 0)
     
+    # Flip Y-axis to convert from SVG coordinate system (Y down) to ML coordinate system (Y up)
+    coords[:, 1] = 140.0 - coords[:, 1]
+    
     # Normalize coordinates
     coords[:, :2] = coords[:, :2] / 140.0
     
@@ -782,10 +785,9 @@ def main():
         if args.use_all_points:
             processed_data = preprocess_svg_data(svg_data, args.norm_type, use_all_points=True)
         else:
-            min_points = 64 if args.debug else args.min_points  # Use much fewer points in debug mode
             processed_data = preprocess_svg_data(svg_data, args.norm_type, use_all_points=False)
             if args.debug:
-                print("Debug mode: Using reduced point count (64) for testing")
+                print("Debug mode: Using reduced point count for testing")
         
         print(f"Preprocessed data: {processed_data['points'].shape}")
         
