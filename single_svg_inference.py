@@ -485,23 +485,36 @@ def group_svg_paths_by_instance(svg_file_path, instance_to_elements, output_svg_
         if ns['svg'] != 'http://www.w3.org/2000/svg':
             new_root.set('xmlns', ns['svg'])
         
-        # Create groups for each instance
-        colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', 
-                  '#FFA500', '#800080', '#FFC0CB', '#A52A2A']
+        # Create groups for each instance with bright, contrasting colors
+        colors = [
+            {'stroke': '#FF0000', 'fill': '#FF000040'},  # Red
+            {'stroke': '#00FF00', 'fill': '#00FF0040'},  # Green
+            {'stroke': '#0000FF', 'fill': '#0000FF40'},  # Blue
+            {'stroke': '#FF8000', 'fill': '#FF800040'},  # Orange
+            {'stroke': '#FF00FF', 'fill': '#FF00FF40'},  # Magenta
+            {'stroke': '#00FFFF', 'fill': '#00FFFF40'},  # Cyan
+            {'stroke': '#FFFF00', 'fill': '#FFFF0040'},  # Yellow
+            {'stroke': '#800080', 'fill': '#80008040'},  # Purple
+            {'stroke': '#FFC0CB', 'fill': '#FFC0CB40'},  # Pink
+            {'stroke': '#A52A2A', 'fill': '#A52A2A40'},  # Brown
+        ]
         
         for idx, (instance_id, group_data) in enumerate(instance_groups.items()):
             g = ET.SubElement(new_root, 'g')
             g.set('id', f'instance_{instance_id}')
-            g.set('stroke', colors[idx % len(colors)])
-            g.set('fill', 'none')
-            g.set('stroke-width', '2')
+            color = colors[idx % len(colors)]
+            g.set('stroke', color['stroke'])
+            g.set('fill', color['fill'])
+            g.set('stroke-width', '4')
             
             # Add all elements of this instance to the group
             for elem in group_data['elements']:
-                # Clone the element
-                new_elem = ET.SubElement(g, elem.tag)
+                # Clone the element without style attributes (group styling will apply)
+                tag_name = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag  # Remove namespace
+                new_elem = ET.SubElement(g, tag_name)
                 for attr, value in elem.attrib.items():
-                    if attr not in ['stroke', 'fill', 'stroke-width']:  # Override style
+                    # Skip style attributes as group will provide them
+                    if attr not in ['stroke', 'fill', 'stroke-width', 'style']:
                         new_elem.set(attr, value)
         
         # Write the new SVG
