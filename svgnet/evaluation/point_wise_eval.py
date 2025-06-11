@@ -96,7 +96,6 @@ class InstanceEval(object):
 
         self.ignore_label = ignore_label
         self._num_classes = num_classes
-        self._class_names = [x["name"] for x in SVG_CATEGORIES[:-1]]
         self.gpu_num = gpu_num
         self.min_obj_score = 0.1
         self.IoU_thres = 0.5
@@ -105,8 +104,25 @@ class InstanceEval(object):
         self.tp_classes_values = np.zeros(num_classes)
         self.fp_classes = np.zeros(num_classes)
         self.fn_classes = np.zeros(num_classes)
-        self.thing_class = [i for i in range(30)]
-        self.stuff_class = [30,31,32,33,34]
+        
+        # Handle different class configurations
+        if num_classes == 7:
+            # Remapped classes: 0-4 are things, 5-6 are stuff
+            self._class_names = ["doors", "windows", "furniture", "stairs", "equipment", "walls", "other/background"]
+            self.thing_class = [0, 1, 2, 3, 4]  # doors, windows, furniture, stairs, equipment
+            self.stuff_class = [5, 6]  # walls, other/background
+        elif num_classes == 35:
+            # Original classes
+            self._class_names = [x["name"] for x in SVG_CATEGORIES[:35]]
+            self.thing_class = [i for i in range(30)]
+            self.stuff_class = [30, 31, 32, 33, 34]
+        else:
+            # Generic fallback
+            self._class_names = [f"Class_{i}" for i in range(num_classes)]
+            # Assume first 80% are things, rest are stuff
+            thing_count = int(num_classes * 0.8)
+            self.thing_class = list(range(thing_count))
+            self.stuff_class = list(range(thing_count, num_classes))
 
     def update(self, instances, target, lengths):
         
@@ -176,7 +192,9 @@ class InstanceEval(object):
         sSQ = sum(self.tp_classes_values) / (sum(self.tp_classes) + 1e-6)
         sPQ = sRQ * sSQ
         
-        for i, name in enumerate(self._class_names):
+        # Only print PQ for valid classes
+        for i in range(min(len(PQ), len(self._class_names))):
+            name = self._class_names[i]
             logger.info('Class_{}  PQ: {:.3f}'.format(name,PQ[i]*100))
 
         logger.info('PQ / RQ / SQ : {:.3f} / {:.3f} / {:.3f}'.format(sPQ*100, sRQ*100, sSQ*100))
