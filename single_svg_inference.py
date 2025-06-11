@@ -304,6 +304,10 @@ def perform_inference(model, data, device='cuda'):
                         processed_inst[key] = value.tolist()
                     elif torch.is_tensor(value):
                         processed_inst[key] = value.cpu().numpy().tolist()
+                    elif isinstance(value, (np.integer, np.int64, np.int32)):
+                        processed_inst[key] = int(value)
+                    elif isinstance(value, (np.floating, np.float64, np.float32)):
+                        processed_inst[key] = float(value)
                     else:
                         processed_inst[key] = value
                 instances.append(processed_inst)
@@ -346,8 +350,6 @@ def map_instances_to_svg_paths(results, svg_data):
     # So we need to map point indices back to element indices
     instance_to_elements = {}
     
-    print(f"Debug: Mapping instances to elements. Total elements: {num_elements}")
-    
     for idx, inst in enumerate(results['instances']):
         # Handle both 'mask' and 'masks' keys
         mask_data = inst.get('mask') or inst.get('masks')
@@ -362,7 +364,6 @@ def map_instances_to_svg_paths(results, svg_data):
             
             # Get indices where mask is True
             point_indices = np.where(mask)[0]
-            print(f"Debug: Instance {idx} has {len(point_indices)} true points")
             
             for point_idx in point_indices:
                 # Each element has 4 points, so element_idx = point_idx // 4
@@ -373,9 +374,9 @@ def map_instances_to_svg_paths(results, svg_data):
                     # This point is in the padded region
                     continue
             
-            print(f"Debug: Instance {idx} maps to {len(element_indices)} elements")
             if element_indices:
-                instance_to_elements[idx] = sorted(list(element_indices))
+                # Convert to Python integers to avoid JSON serialization issues
+                instance_to_elements[idx] = [int(x) for x in sorted(list(element_indices))]
     
     return instance_to_elements
 
