@@ -49,8 +49,13 @@ def parse_svg(svg_file):
                 raise RuntimeError("Parse path failed!{}, {}".format(svg_file, path.attrib['d']))
             
             path_type = path_repre[0].__class__.__name__
-            commands.append(COMMANDS.index(path_type))
             length = path_repre.length()
+            
+            # Skip degenerate paths with zero or very small length
+            if length < 1e-6:
+                continue
+                
+            commands.append(COMMANDS.index(path_type))
             lengths.append(length)
             layerIds.append(id)
             semanticId = int(path.attrib['semanticId']) - 1 if 'semanticId' in path.attrib else LABEL_NUM
@@ -62,9 +67,14 @@ def parse_svg(svg_file):
             widths.extend([float(path.attrib["stroke-width"])])
             inds = [0, 1/3, 2/3, 1.0]
             arg = []
-            for ind in inds:
-                point = path_repre.point(ind)
-                arg.extend([point.real,point.imag])
+            try:
+                for ind in inds:
+                    point = path_repre.point(ind)
+                    arg.extend([point.real,point.imag])
+            except:
+                # If we can't compute points, use start and end points repeated
+                start = path_repre.point(0)
+                arg = [start.real, start.imag] * 4
             args.append(arg)
             inst_infos[(instanceId,semanticId)].extend(arg)
             
