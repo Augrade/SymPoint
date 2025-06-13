@@ -8,7 +8,7 @@ import numpy as np
 #from sklearn.metrics.pairwise import euclidean_distances
 
 LABEL_NUM = 35
-COMMANDS = ['Line', 'Arc', 'circle', 'ellipse', 'QuadraticBezier', 'CubicBezier']
+COMMANDS = ['Line', 'Arc', 'circle', 'ellipse']
 import mmcv, argparse
 
 def parse_args():
@@ -54,6 +54,10 @@ def parse_svg(svg_file):
             # Skip degenerate paths with zero or very small length
             if length < 1e-6:
                 continue
+            
+            # Map bezier curves to Line type for compatibility with trained model
+            if path_type in ['QuadraticBezier', 'CubicBezier']:
+                path_type = 'Line'
                 
             commands.append(COMMANDS.index(path_type))
             lengths.append(length)
