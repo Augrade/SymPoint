@@ -8,7 +8,7 @@ import numpy as np
 #from sklearn.metrics.pairwise import euclidean_distances
 
 LABEL_NUM = 35
-COMMANDS = ['Line', 'Arc','circle', 'ellipse']
+COMMANDS = ['Line', 'Arc', 'circle', 'ellipse', 'QuadraticBezier', 'CubicBezier']
 import mmcv, argparse
 
 def parse_args():
