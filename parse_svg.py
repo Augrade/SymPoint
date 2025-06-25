@@ -335,7 +335,7 @@ def process(data):
             
             
 
-json_dicts = parse_svg("/Users/kai/Documents/svg/converted_sample.svg")
-filename = "/Users/kai/Documents/svg/converted_sample.svg".split("/")[-1].replace(".svg",".json")
-out_json = os.path.join(filename)
-save_json(json_dicts,out_json)
+# json_dicts = parse_svg("/Users/kai/Documents/svg/converted_sample.svg")
+# filename = "/Users/kai/Documents/svg/converted_sample.svg".split("/")[-1].replace(".svg",".json")
+# out_json = os.path.join(filename)
+# save_json(json_dicts,out_json)
