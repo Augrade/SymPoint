@@ -9,7 +9,8 @@ import numpy as np
 
 LABEL_NUM = 35
 COMMANDS = ['Line', 'Arc', 'circle', 'ellipse']
-import mmcv, argparse
+# import mmcv
+import argparse
 
 def parse_args():
     '''
@@ -26,8 +27,15 @@ def parse_args():
 def parse_svg(svg_file):
     tree = ET.parse(svg_file)
     root = tree.getroot()
-    ns = root.tag[:-3]
-    minx, miny, width, height = [int(float(x)) for x in root.attrib['viewBox'].split(' ')]
+    
+    # Handle namespace
+    ns = ''
+    if '}' in root.tag:
+        ns = root.tag[:root.tag.index('}')+1]
+    
+    # Parse viewBox
+    viewbox = root.attrib.get('viewBox', '0 0 100 100').split()
+    minx, miny, width, height = [int(float(x)) for x in viewbox]
     
     commands = []
     args = [] # (x1,y1,x2,y2,x3,y3,x4,y4) 4points
@@ -39,8 +47,12 @@ def parse_svg(svg_file):
     widths = []
     inst_infos = defaultdict(list)
     id = 0
+    
+    # First try to process paths in groups
+    has_groups = False
     for g in root.iter(ns + 'g'):
-        id +=1
+        has_groups = True
+        id += 1
         # path
         for path in g.iter(ns + 'path'):
             try:
@@ -82,7 +94,6 @@ def parse_svg(svg_file):
             args.append(arg)
             inst_infos[(instanceId,semanticId)].extend(arg)
             
-        
         # circle
         for circle in g.iter(ns + 'circle'):
              
@@ -99,7 +110,7 @@ def parse_svg(svg_file):
             layerIds.append(id)
             rgb = list(map(int,re.findall(r'\d+',circle.attrib['stroke'])))
             strokes.append(rgb)
-            widths.extend([float(circle.attrib["stroke-width"])])
+            widths.append(float(circle.attrib["stroke-width"]))
             thetas = [0,math.pi/2, math.pi, 3 * math.pi/2,]
             arg = []
             for theta in thetas:
@@ -129,7 +140,7 @@ def parse_svg(svg_file):
             layerIds.append(id)
             rgb = list(map(int,re.findall(r'\d+',ellipse.attrib['stroke'])))
             strokes.append(rgb)
-            widths.extend([float(ellipse.attrib["stroke-width"])])
+            widths.append(float(ellipse.attrib["stroke-width"]))
             thetas = [0,math.pi/2, math.pi, 3 * math.pi/2,]
             arg = []
             for theta in thetas:
@@ -137,8 +148,129 @@ def parse_svg(svg_file):
                 arg.extend([x,y])
             args.append(arg)
             inst_infos[(instanceId,semanticId)].extend(arg)
+    
+    # If no groups found, process elements directly under root
+    if not has_groups:
+        id = 1
+        # Process paths directly under root
+        for path in root.iter(ns + 'path'):
+            try:
+                path_repre = parse_path(path.attrib['d'])
+            except Exception as e:
+                print(f"Warning: Parse path failed for {svg_file}: {e}")
+                continue
             
+            # Process each segment in the path
+            for segment in path_repre:
+                path_type = segment.__class__.__name__
+                
+                # Skip Move commands
+                if path_type == 'Move':
+                    continue
+                    
+                try:
+                    # Create a Path with just this segment
+                    from svgpathtools import Path
+                    single_segment = Path(segment)
+                    length = single_segment.length()
+                except:
+                    continue
+                
+                # Skip degenerate paths with zero or very small length
+                if length < 1e-6:
+                    continue
+                
+                # Map bezier curves to Line type for compatibility with trained model
+                if path_type in ['QuadraticBezier', 'CubicBezier']:
+                    path_type = 'Line'
+                    
+                commands.append(COMMANDS.index(path_type))
+                lengths.append(length)
+                layerIds.append(id)
+                semanticId = int(path.attrib['semanticId']) - 1 if 'semanticId' in path.attrib else LABEL_NUM
+                instanceId = int(path.attrib['instanceId']) if 'instanceId' in path.attrib else -1
+                semanticIds.append(semanticId)
+                instanceIds.append(instanceId)
+                
+                # Handle stroke attributes
+                stroke_attr = path.attrib.get('stroke', 'rgb(0,0,0)')
+                rgb = list(map(int, re.findall(r'\d+', stroke_attr)))
+                strokes.append(rgb)
+                widths.append(float(path.attrib.get("stroke-width", "1.0")))
+                
+                inds = [0, 1/3, 2/3, 1.0]
+                arg = []
+                try:
+                    for ind in inds:
+                        point = segment.point(ind)
+                        arg.extend([point.real, point.imag])
+                except:
+                    # If we can't compute points, use start and end points repeated
+                    try:
+                        start = segment.point(0)
+                        end = segment.point(1)
+                        arg = [start.real, start.imag, 
+                               start.real + (end.real - start.real)/3, start.imag + (end.imag - start.imag)/3,
+                               start.real + 2*(end.real - start.real)/3, start.imag + 2*(end.imag - start.imag)/3,
+                               end.real, end.imag]
+                    except:
+                        continue
+                args.append(arg)
+                inst_infos[(instanceId, semanticId)].extend(arg)
         
+        # Process circles directly under root
+        for circle in root.iter(ns + 'circle'):
+            cx = float(circle.attrib['cx'])
+            cy = float(circle.attrib['cy'])
+            r = float(circle.attrib['r'])
+            semanticId = int(circle.attrib['semanticId']) - 1 if 'semanticId' in circle.attrib else LABEL_NUM
+            instanceId = int(circle.attrib['instanceId']) if 'instanceId' in circle.attrib else -1
+            circle_len = 2 * math.pi * r
+            lengths.append(circle_len)
+            semanticIds.append(semanticId)
+            instanceIds.append(instanceId)
+            commands.append(COMMANDS.index("circle"))
+            layerIds.append(id)
+            rgb = list(map(int,re.findall(r'\d+',circle.attrib.get('stroke', 'rgb(0,0,0)'))))
+            strokes.append(rgb)
+            widths.append(float(circle.attrib.get("stroke-width", "1.0")))
+            thetas = [0,math.pi/2, math.pi, 3 * math.pi/2,]
+            arg = []
+            for theta in thetas:
+                x, y = cx + r * math.cos(theta), cy + r * math.sin(theta)
+                arg.extend([x,y])
+            args.append(arg)
+            inst_infos[(instanceId,semanticId)].extend(arg)
+        
+        # Process ellipses directly under root
+        for ellipse in root.iter(ns + 'ellipse'):
+            cx = float(ellipse.attrib['cx'])
+            cy = float(ellipse.attrib['cy'])
+            rx = float(ellipse.attrib['rx'])
+            ry = float(ellipse.attrib['ry'])
+            
+            semanticId = int(ellipse.attrib['semanticId']) - 1 if 'semanticId' in ellipse.attrib else LABEL_NUM
+            instanceId = int(ellipse.attrib['instanceId']) if 'instanceId' in ellipse.attrib else -1
+            if rx>ry: 
+                a,b = rx, ry
+            else:
+                a,b = ry, rx
+            ellipse_len = 2* math.pi *b + 4*(a - b)
+            lengths.append(ellipse_len)
+            commands.append(COMMANDS.index("ellipse"))
+            semanticIds.append(semanticId)
+            instanceIds.append(instanceId)
+            layerIds.append(id)
+            rgb = list(map(int,re.findall(r'\d+',ellipse.attrib.get('stroke', 'rgb(0,0,0)'))))
+            strokes.append(rgb)
+            widths.append(float(ellipse.attrib.get("stroke-width", "1.0")))
+            thetas = [0,math.pi/2, math.pi, 3 * math.pi/2,]
+            arg = []
+            for theta in thetas:
+                x, y = cx + a * math.cos(theta), cy + b * math.sin(theta)
+                arg.extend([x,y])
+            args.append(arg)
+            inst_infos[(instanceId,semanticId)].extend(arg)
             
     assert len(args) == len(lengths) ,'error'
     assert len(semanticIds) ==  len(instanceIds), 'error'
@@ -181,18 +313,18 @@ def process(data):
     out_json = os.path.join(save_dir,filename)
     save_json(json_dicts,out_json)
 
-if __name__=="__main__":
+# if __name__=="__main__":
     
-    args = parse_args()
-    svg_paths = glob.glob(os.path.join(args.data_dir,'*.svg'))
+#     args = parse_args()
+#     svg_paths = glob.glob(os.path.join(args.data_dir,'*.svg'))
     
-    save_dir = os.path.join("./dataset/",args.split, "jsons")
-    os.makedirs(save_dir,exist_ok=True)
+#     save_dir = os.path.join("./dataset/",args.split, "jsons")
+#     os.makedirs(save_dir,exist_ok=True)
     
-    inputs = []
-    for svg_path in svg_paths: inputs.append([svg_path, save_dir])
+#     inputs = []
+#     for svg_path in svg_paths: inputs.append([svg_path, save_dir])
 
-    mmcv.track_parallel_progress(process,inputs,64)
+#     mmcv.track_parallel_progress(process,inputs,64)
 
 
     
@@ -203,3 +335,7 @@ if __name__=="__main__":
             
             
 
+json_dicts = parse_svg("/Users/kai/Documents/svg/converted_sample.svg")
+filename = "/Users/kai/Documents/svg/converted_sample.svg".split("/")[-1].replace(".svg",".json")
+out_json = os.path.join(filename)
+save_json(json_dicts,out_json)
