@@ -259,10 +259,15 @@ def interpolation(xyz, new_xyz, feat, offset, new_offset, k=3):
     output: (n, c)
     """
     assert xyz.is_contiguous() and new_xyz.is_contiguous() and feat.is_contiguous()
-    idx, dist = knnquery(k, xyz, new_xyz, offset, new_offset)  # (n, 3), (n, 3)
-    dist_recip = 1.0 / (dist + 1e-8)  # (n, 3)
+    idx, dist = knnquery(k, xyz, new_xyz, offset, new_offset)  # (n, k), (n, k)
+
+    # CRITICAL FIX: Clamp indices to valid range to prevent CUDA device-side assert
+    max_idx = feat.shape[0] - 1
+    idx = torch.clamp(idx, 0, max_idx)
+
+    dist_recip = 1.0 / (dist + 1e-8)  # (n, k)
     norm = torch.sum(dist_recip, dim=1, keepdim=True)
-    weight = dist_recip / norm  # (n, 3)
+    weight = dist_recip / norm  # (n, k)
 
     new_feat = torch.cuda.FloatTensor(new_xyz.shape[0], feat.shape[1]).zero_()
     for i in range(k):
